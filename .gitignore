@@ -1,0 +1,4 @@
+bundle.dir/
+bundle.zip
+dist/
+node_modules/

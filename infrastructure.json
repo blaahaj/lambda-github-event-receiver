@@ -1,0 +1,132 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Resources": {
+    "Queue": {
+      "Type": "AWS::SQS::Queue",
+      "Properties": {
+        "DelaySeconds": "0",
+        "MaximumMessageSize": "262144",
+        "MessageRetentionPeriod": "1209600",
+        "ReceiveMessageWaitTimeSeconds": "0",
+        "VisibilityTimeout": "30"
+      }
+    },
+    "Topic": {
+      "Type": "AWS::SNS::Topic"
+    },
+    "Subscription": {
+      "Type": "AWS::SNS::Subscription",
+      "Properties": {
+        "TopicArn": { "Ref": "Topic" },
+        "Protocol": "sqs",
+        "Endpoint": { "Fn::GetAtt": ["Queue", "Arn"] }
+      }
+    },
+    "QueuePolicy": {
+      "Type": "AWS::SQS::QueuePolicy",
+      "Properties": {
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Id": "__default_policy_ID",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": "*"
+              },
+              "Action": "SQS:SendMessage",
+              "Resource": { "Fn::GetAtt": ["Queue", "Arn"] },
+              "Condition": {
+                "ArnLike": {
+                  "aws:SourceArn": { "Ref": "Topic" }
+                }
+              }
+            }
+          ]
+        },
+        "Queues": [{ "Ref": "Queue" }]
+      }
+    },
+    "Secret": {
+      "Type": "AWS::SecretsManager::Secret",
+      "Properties": {
+        "Name": "cfn-gh-secret"
+      }
+    },
+    "FunctionRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "ManagedPolicyArns": [
+          "arn:aws:iam::182797222454:policy/service-role/AWSLambdaBasicExecutionRole-1c799bb1-42bc-439d-af07-de36dc46f63b"
+        ],
+        "Policies": [
+          {
+            "PolicyName": "publish-to-sns",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": "sns:Publish",
+                  "Resource": { "Ref": "Topic" }
+                }
+              ]
+            }
+          },
+          {
+            "PolicyName": "read-secret",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": "secretsmanager:GetSecretValue",
+                  "Resource": { "Ref": "Secret" }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "Function": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cf-templates-1gumfxn92ctm0-eu-central-1",
+          "S3Key": "bundle.zip"
+        },
+        "Handler": "dist/src/index.handler",
+        "Role": { "Fn::GetAtt": ["FunctionRole", "Arn"] },
+        "Runtime": "nodejs20.x",
+        "MemorySize": 128,
+        "Timeout": 5,
+        "Environment": {
+          "Variables": {
+            "SNS_TOPIC_ARN": { "Ref": "Topic" },
+            "GITHUB_SIGNING_SECRET_ID": { "Ref": "Secret" }
+          }
+        }
+      }
+    },
+    "FunctionUrl": {
+        "Type": "AWS::Lambda::Url",
+        "Properties": {
+            "AuthType": "NONE",
+            "TargetFunctionArn": { "Fn::GetAtt": ["Function", "Arn"] }
+        }
+    } 
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "composite": true,
+    "declaration": true,
+    "incremental": true,
+    "module": "NodeNext",
+    "moduleResolution": "nodenext",
+    "strictNullChecks": true,
+    "target": "ESNext",
+    "outDir": "dist",
+    "rootDir": ".",
+    "plugins": [
+      {
+        "name": "@0no-co/graphqlsp",
+        "schema": "./schema.graphql"
+      }
+    ]
+  },
+  "include": ["generated/**/*.ts", "src/**/*.ts", "src/index.mts"]
+}
