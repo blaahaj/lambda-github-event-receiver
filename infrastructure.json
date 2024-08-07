@@ -1,5 +1,13 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
+  "Parameters": {
+    "CodeS3Bucket": {
+        "Type": "String"
+    },
+    "CodeS3Key": {
+        "Type": "String"
+    }
+  },
   "Resources": {
     "Queue": {
       "Type": "AWS::SQS::Queue",
@@ -50,7 +58,7 @@
     "Secret": {
       "Type": "AWS::SecretsManager::Secret",
       "Properties": {
-        "Name": "cfn-gh-secret"
+        "Name": { "Fn::Sub": "${AWS::StackName}-secret" }
       }
     },
     "FunctionRole": {
@@ -68,9 +76,6 @@
             }
           ]
         },
-        "ManagedPolicyArns": [
-          "arn:aws:iam::182797222454:policy/service-role/AWSLambdaBasicExecutionRole-1c799bb1-42bc-439d-af07-de36dc46f63b"
-        ],
         "Policies": [
           {
             "PolicyName": "publish-to-sns",
@@ -105,8 +110,8 @@
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
-          "S3Bucket": "cf-templates-1gumfxn92ctm0-eu-central-1",
-          "S3Key": "bundle.zip"
+          "S3Bucket": { "Ref": "CodeS3Bucket" },
+          "S3Key": { "Ref": "CodeS3Key" }
         },
         "Handler": "dist/src/index.handler",
         "Role": { "Fn::GetAtt": ["FunctionRole", "Arn"] },
@@ -118,15 +123,57 @@
             "SNS_TOPIC_ARN": { "Ref": "Topic" },
             "GITHUB_SIGNING_SECRET_ID": { "Ref": "Secret" }
           }
+        },
+        "LoggingConfig": {
+          "ApplicationLogLevel": "INFO",
+          "LogFormat": "JSON",
+          "SystemLogLevel": "INFO"
         }
       }
     },
     "FunctionUrl": {
-        "Type": "AWS::Lambda::Url",
-        "Properties": {
-            "AuthType": "NONE",
-            "TargetFunctionArn": { "Fn::GetAtt": ["Function", "Arn"] }
+      "Type": "AWS::Lambda::Url",
+      "Properties": {
+        "AuthType": "NONE",
+        "TargetFunctionArn": { "Fn::GetAtt": ["Function", "Arn"] }
+      }
+    },
+    "LoggingPolicy": {
+      "Type": "AWS::IAM::RolePolicy",
+      "Properties": {
+        "RoleName": { "Ref": "FunctionRole" },
+        "PolicyName": "log-to-cloudwatch",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": "logs:CreateLogGroup",
+              "Resource": {
+                "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:*"
+              }
+            },
+            {
+              "Effect": "Allow",
+              "Action": ["logs:CreateLogStream", "logs:PutLogEvents"],
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/"
+                      },
+                      { "Ref": "Function" },
+                      ":*"
+                    ]
+                  ]
+                }
+              ]
+            }
+          ]
         }
-    } 
+      }
+    }
   }
 }

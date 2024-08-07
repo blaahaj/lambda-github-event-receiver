@@ -2,27 +2,39 @@
 
 An AWS Lambda receiver for GitHub webhook events.
 
+# Prerequisites
+
+- node v20.x
+- yarn
+- make
+- an AWS account
+- aws (e.g. `brew install aws-cli`), and to have authentication set up
+- an S3 bucket
+
 # Installation
 
-```
+```sh
 yarn
 yarn run build
 make
 ```
 
-Create / find an S3 bucket. Put that bucket's name into `S3Bucket` in `infrastructure.json`.
+Create / find an S3 bucket, and set it in BUCKET_NAME:
 
-```
-aws s3 cp bundle.zip s3://your-bucket-name/bundle.zip
-```
+```sh
+export BUCKET_NAME="my bucket"
 
-It doesn't have to be `bundle.zip` in S3. If you want to put it somewhere else, update `S3Key` in `infrastructure.json`.
-
-```
-aws cloudformation create-stack --stack-name GitHubWebhookReceiver --template-body "$( < infrastructure.json )" --capabilities CAPABILITY_IAM
+# Optionally:
+# export BUCKET_KEY_PREFIX=some/prefix/
 ```
 
-You can give the stack a different name if you wish.
+Create the stack:
+
+```sh
+make create-stack
+```
+
+You can give the stack a different name if you wish; see `--stack-name`, in the Makefile.
 
 Find the ID of the secret that AWS just created:
 
@@ -34,7 +46,7 @@ and look for the `PhysicalResourceId`, which will start with `arn:aws:secretsman
 
 Generate a shared secret, using whatever method you wish.
 
-Put the secret:
+Put the secret into AWS Secrets Manager:
 
 ```
 aws secretsmanager put-secret-value --secret-id arn:aws:secretsmanager:... --secret-string "..."

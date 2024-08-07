@@ -17,8 +17,6 @@ const gitHubWebhookHeaders = [
 ] as const;
 
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {
-  console.log(JSON.stringify({ env: process.env, event }));
-
   const topicArn = process.env.SNS_TOPIC_ARN;
   if (topicArn === undefined)
     return {
