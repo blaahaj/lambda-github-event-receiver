@@ -53,9 +53,10 @@ aws secretsmanager put-secret-value --secret-id arn:aws:secretsmanager:... --sec
 ```
 
 You'll now need to add permission for the function to be invoked via its URL. Cloudformation
-[can't do that yet](https://github.com/hashicorp/terraform-provider-aws/issues/24325).
-Go to your function in the console, Configuration, Permissions, Resource-based policy statements.
-Add a permission from "Function URL" using auth type "NONE".
+[can't do that yet](https://github.com/hashicorp/terraform-provider-aws/issues/24325), nor does
+there seem to be a working API. So, go to your function in the console, then Configuration,
+Permissions, Resource-based policy statements. Add a permission from "Function URL",
+using auth type "NONE".
 
 Make a note of your function's URL.
 
